@@ -24,6 +24,9 @@
   <f:entry title="${%planKey}" field="planKey">
     <f:textbox />
   </f:entry>
+  <f:entry title="${%branch}" field="branch">
+    <f:textbox />
+  </f:entry>
   <f:entry title="${%serverAddress}" field="serverAddress">
     <f:textbox />
   </f:entry>

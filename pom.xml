@@ -66,6 +66,11 @@
       <name>Kyle Flavin</name>
       <email>Kyle.Flavin@logmein.com</email>
     </developer>
+    <developer>
+      <id>andrecs-br</id>
+      <name>Andre Carlos da Silva</name>
+      <email>acarlosdasilva@proofpoint.com</email>
+    </developer>
   </developers>
 
   <build>

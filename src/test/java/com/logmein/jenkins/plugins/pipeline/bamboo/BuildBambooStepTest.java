@@ -31,7 +31,7 @@ public class BuildBambooStepTest {
 
     @Before
     public void setup() {
-        b = new BuildBambooStep("project", "plan", "https://bamboo.example.org", "user", "password");
+        b = new BuildBambooStep("project", "plan", "master", "https://bamboo.example.org", "user", "password");
     }
 
     @Test
@@ -42,6 +42,11 @@ public class BuildBambooStepTest {
     @Test
     public void getPlanName() throws Exception {
         assertEquals("plan", b.getPlanKey());
+    }
+
+    @Test
+    public void getBranch() throws Exception {
+        assertEquals("master", b.getBranch());
     }
 
     @Test
