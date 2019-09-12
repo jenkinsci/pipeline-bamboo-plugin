@@ -19,6 +19,7 @@ package com.logmein.jenkins.plugins.pipeline.bamboo;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.logmein.jenkins.plugins.pipeline.bamboo.exceptions.BambooException;
 import hudson.Extension;
 import hudson.model.TaskListener;
@@ -53,6 +54,7 @@ import java.util.concurrent.TimeUnit;
 public class BuildBambooStep extends Step {
     private String projectKey;
     private String planKey;
+    private String branch;
     private String serverAddress;
     private String username;
     private String password;
@@ -66,6 +68,7 @@ public class BuildBambooStep extends Step {
      *
      * @param projectKey: Bamboo project key.  used to construct the job: "projectKey-planKey"
      * @param planKey: Bamboo plan key.  used to construct the job: "planKey-planKey"
+     * @param branch: Code branch.  used to construct the job: "projectKey-planKeybranchnumber"
      * @param serverAddress: Server address, prefix with protocol.  Example: https://bamboo-server.example.org
      * @param username: Bamboo API user
      * @param password: Bamboo API password
@@ -73,12 +76,14 @@ public class BuildBambooStep extends Step {
     @DataBoundConstructor
     public BuildBambooStep(String projectKey,
                            String planKey,
+                           String branch,
                            String serverAddress,
                            String username,
                            String password) {
 
         this.projectKey = projectKey;
         this.planKey = planKey;
+        this.branch = branch;
         this.serverAddress = serverAddress;
         this.username = username;
         this.password = password;
@@ -89,7 +94,7 @@ public class BuildBambooStep extends Step {
 
     /**
      * Project name getter
-     * @return String that is the project key. Combined with plan to form the job name.
+     * @return String that is the project key. Combined with plan and branch to form the job name.
      */
     public String getProjectKey() {
         return projectKey;
@@ -97,10 +102,18 @@ public class BuildBambooStep extends Step {
 
     /**
      * Plan name getter
-     * @return String that is the plan key.  Combined with project to form the job name.
+     * @return String that is the plan key.  Combined with project and branch to form the job name.
      */
     public String getPlanKey() {
         return planKey;
+    }
+
+    /**
+     * Branch name getter
+     * @return String that is the branch. Combined with plan and project to form the job name.
+     */
+    public String getBranch() {
+        return branch;
     }
 
     /**
@@ -338,7 +351,7 @@ public class BuildBambooStep extends Step {
         }
 
         /**
-         * GET data from the server.  Used to monitor build status.
+         * GET data from the server.  Used to monitor build status and get branches for a plan.
          *
          * @param url Bamboo target server URL.  Example: http://bamboo-server.example.org
          * @param username Bamboo API username
@@ -381,7 +394,6 @@ public class BuildBambooStep extends Step {
                     result = node.get("buildNumber").asInt();
                 } else {
                     this.logger.println("Could not get build number.  Is the job already running?");
-                    return result;
                 }
             } catch (IOException e) {
                 this.logger.println("Failed to read build number.");
@@ -389,6 +401,45 @@ public class BuildBambooStep extends Step {
                 this.logger.println(e);
             }
             return result;
+        }
+
+        /**
+         * Get the branch full key. This key will substitute project + planKey on URL do start the job.
+         * @param text GET data returned from Bamboo server after call all Branches from a project + planKey (JSON format).
+         * @param branch Branch name that you desires to find the key. MUST BE the same name registered in bamboo.
+         * @return The Branch Full key or null if not found or invalid JSON.
+         */
+        public String getBranchKey(String text, String branch) {
+
+            String result = null;
+            ObjectMapper om = new ObjectMapper();
+
+            try {
+
+                JsonNode node = om.readValue(text, JsonNode.class);
+                ArrayNode branches = (ArrayNode) node.get("branches").get("branch");
+
+                if (branches != null) {
+                    JsonNode currentBranch = null;
+
+                    Iterator<JsonNode> iterator = branches.iterator();
+
+                    while (result == null && iterator.hasNext()) {
+                        currentBranch = iterator.next();
+                        if (currentBranch.get("shortName").asText().equalsIgnoreCase(branch)) {
+                            result = currentBranch.get("key").asText();
+                        }
+                    }
+                }
+
+                this.logger.println("Branch Key to use: " + result);
+            } catch (IOException e) {
+                this.logger.println("Failed to read branchKey number.");
+                this.logger.println(text);
+                this.logger.println(e);
+            }
+            return result;
+
         }
 
         /**
@@ -421,13 +472,24 @@ public class BuildBambooStep extends Step {
             final String password = this.step.getPassword();
             final String projectKey = this.step.getProjectKey();
             final String planKey = this.step.getPlanKey();
+            final String branch = this.step.getBranch();
             final String serverAddress = this.step.getServerAddress();
             final boolean propagate = this.step.getPropagate();
             final int checkInterval = this.step.getCheckInterval();
             final Map<String, Object> params = this.step.getParams();
 
-            final String postUrl = serverAddress + "/rest/api/latest/queue/" + projectKey + "-" +
-                    planKey + ".json?stage&executeAllStages&os_authType=basic";
+            final String branchesUrl = serverAddress + "/rest/api/latest/plan/" + projectKey + "-" +
+                            planKey + "/branch.json?os_authType=basic";
+
+            String getText = get(branchesUrl, username, password);
+
+            String projectPlanBranch = this.getBranchKey(getText, branch);
+
+            if (projectPlanBranch == null) {
+                projectPlanBranch = projectKey + "-" + planKey;
+            }
+
+            final String postUrl = serverAddress + "/rest/api/latest/queue/" + projectPlanBranch + ".json?stage&executeAllStages&os_authType=basic";
 
             this.logger.println("propagate=" + propagate);
             this.logger.println("checkInterval=" + TimeUnit.MILLISECONDS.toSeconds(checkInterval) + "s");
@@ -449,10 +511,11 @@ public class BuildBambooStep extends Step {
             }
 
             // Use the getUrl to check the build status
-            String getUrl = serverAddress + "/rest/api/latest/result/" + projectKey + "-" +
-                    planKey + "/" + buildNumber + ".json?os_authType=basic";
+            final String getUrl = serverAddress + "/rest/api/latest/result/" + projectPlanBranch + "/" + buildNumber + ".json?os_authType=basic";
 
-            String getText, lifeCycleState, buildState="";
+            this.logger.println("statusURL has been constructed as: " + getUrl);
+
+            String lifeCycleState, buildState = "";
 
             try {
 

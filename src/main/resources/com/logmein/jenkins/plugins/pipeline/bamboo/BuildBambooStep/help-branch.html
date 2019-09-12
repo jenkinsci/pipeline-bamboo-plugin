@@ -16,27 +16,7 @@
  */
  -->
 
-<?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
-  <f:entry title="${%projectKey}" field="projectKey">
-    <f:textbox />
-  </f:entry>
-  <f:entry title="${%planKey}" field="planKey">
-    <f:textbox />
-  </f:entry>
-  <f:entry title="${%branch}" field="branch">
-    <f:textbox />
-  </f:entry>
-  <f:entry title="${%serverAddress}" field="serverAddress">
-    <f:textbox />
-  </f:entry>
-  <f:entry title="${%username}" field="username">
-    <f:textbox />
-  </f:entry>
-  <f:entry title="${%password}" field="password">
-    <f:textbox />
-  </f:entry>
-  <f:entry title="${%propagate}" field="propagate">
-    <f:textbox />
-  </f:entry>
-</j:jelly>
+<div>
+    (optional) The branch of the plan key. Just inform if your plan has branch capability enabled.<br/>
+    You can use the plan key with the branch ("MYPROJECT-MYPLAN0") directly instead of informing this field. The number in the end of plan key means the branch.<br/>
+</div>
