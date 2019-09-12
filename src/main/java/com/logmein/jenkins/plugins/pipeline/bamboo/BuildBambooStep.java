@@ -406,6 +406,7 @@ public class BuildBambooStep extends Step {
         /**
          * Get the branch full key. This key will substitute project + planKey on URL do start the job.
          * @param text GET data returned from Bamboo server after call all Branches from a project + planKey (JSON format).
+         * @param branch Branch name that you desires to find the key. MUST BE the same name registered in bamboo.
          * @return The Branch Full key or null if not found or invalid JSON.
          */
         public String getBranchKey(String text, String branch) {
