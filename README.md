@@ -15,7 +15,7 @@ timeout(time: 600, unit: 'SECONDS') { // change to a convenient timeout for you
                       credentialsId   : "bamboo-test-credentials",
                       usernameVariable: 'BAMBOO_USER',
                       passwordVariable: 'BAMBOO_PASS']]) {
-        buildBamboo(projectKey: "projectKey", planKey: "planKey", serverAddress: 'http://bamboo-server', 'username': env.BAMBOO_USER, 'password': env.BAMBOO_PASS)
+        buildBamboo(projectKey: "projectKey", planKey: "planKey", branch: "branch", serverAddress: 'http://bamboo-server', 'username': env.BAMBOO_USER, 'password': env.BAMBOO_PASS)
     }
 }
 ```
@@ -27,6 +27,7 @@ To trigger a build with parameters, pass a Map with your arguments:
 ```groovy
 buildBamboo(projectKey: "projectKey", 
             planKey: "planKey",
+            branch: "branch",
             serverAddress: 'http://bamboo-server', 
             'username': env.BAMBOO_USER, 
             'password': env.BAMBOO_PASS, 
